@@ -1,5 +1,6 @@
 const MongoClient = require("mongodb").MongoClient; // acts as client for mongo server
 const assert = require("assert").strict; // allows various checks of values
+const dboper = require("./operations");
 
 const url = "mongodb://localhost:27017/"; //url where mongo server can be accessed
 const dbname = "nucampsite"; // name of specific database to connect to
@@ -15,22 +16,39 @@ MongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
     assert.strictEqual(err, null);
     console.log("dropped collection", result);
 
-    // recreates campsites collection
-    const collection = db.collection("campsites");
-
     // adds the document to collection
-    collection.insertOne(
+    dboper.insertDocument(
+      db,
       { name: "Breadcrumb Trail Campground", description: "Test" },
-      (err, result) => {
-        assert.strictEqual(err, null);
+      "campsites",
+      (result) => {
         console.log("insert Document:", result.ops);
 
-        // returns all documents from collection with empty() toArray converts documents to array so it can be console logged
-        collection.find().toArray((err, docs) => {
-          assert.strictEqual(err, null);
-          console.log("found documents:", docs);
+        dboper.findDocuments(db, "campsites", (docs) => {
+          console.log("Found documents:", docs);
 
-          client.close(); // closes client connection to mongo server
+          dboper.updateDocument(
+            db,
+            { name: "Breadcrumb Trail Campground" },
+            { description: "Updated Test Description" },
+            "campsites",
+            (result) => {
+              console.log("updated document count:", result.result.nModified);
+              dboper.findDocuments(db, "campsites", (docs) => {
+                console.log("Found documents:", docs);
+
+                dboper.removeDocument(
+                  db,
+                  { name: "Breadcrumb Trail Campground" },
+                  "campsites",
+                  (result) => {
+                    console.log("Deleted document count:", result.deletedCount);
+                    client.close();
+                  }
+                );
+              });
+            }
+          );
         });
       }
     );
